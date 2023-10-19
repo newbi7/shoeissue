@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="CommunityBoard">
+	
+	<!-- 게시글 세부 조회 -->
+	<select id="selectOne" parameterType="String"		
+resultType="CommunityBoard">
+       <![CDATA[   
+         SELECT 
+    b.boardId,
+    b.boardTitle,
+    b.boardContents,
+    b.userId,
+    b.boardDate,
+    u.nickName,
+    (SELECT COUNT(*) FROM communityLike l WHERE l.boardId = b.boardId) AS boardLike
+		FROM communityboard b
+		JOIN user u ON u.userId = b.userId
+		WHERE boardId = #{boardId} AND boardDeletedate IS NULL
+      ]]>
+	</select>
+
+	<!-- 모든 게시글 조회 -->
+	<select id="selectAll" resultType="CommunityBoard">
+       <![CDATA[   
+         SELECT
+         	boardId,
+         	boardTitle,
+         	boardContents,
+         	boardDate,
+         	b.userId,
+         	u.nickName,
+         	(SELECT COUNT(*) FROM communityLike l WHERE l.boardId = b.boardId) AS boardLike
+         	FROM communityboard b
+			JOIN user u ON u.userId = b.userId
+			WHERE boardDeletedate IS NULL
+			ORDER BY boardDate DESC
+      ]]>
+	</select>
+
+	<!-- 게시글 작성 -->
+	<insert id="insert" parameterType="CommunityBoard">
+	   <![CDATA[
+  		 INSERT INTO communityboard (boardId,boardTitle, boardContents, boardDate, userId)
+  		VALUES (#{boardId}, #{boardTitle}, #{boardContents}, NOW(), #{userId})
+	   ]]>
+	</insert>
+	
+	<!-- 게시글 삭제 -->
+	<delete id="delete" parameterType="CommunityBoard">
+		<![CDATA[
+		    UPDATE communityboard 
+		    SET boardDeletedate = NOW()
+		    WHERE boardId = #{boardId} AND userId = #{userId}
+  		]]>
+	</delete>
+	
+	<!-- 게시글 수정 -->
+	<update id="update" parameterType="CommunityBoard">
+		<![CDATA[
+		    UPDATE communityboard
+		    SET 
+		    	boardUpdateDate = NOW(),
+		    	boardTitle = #{boardTitle},
+		    	boardContents = #{boardContents}
+		    WHERE boardId = #{boardId} AND userId = #{userId}
+  		]]>
+	</update>
+</mapper>

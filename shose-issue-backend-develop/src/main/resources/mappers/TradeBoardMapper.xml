@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="tradeBoard">
+
+	<select id="searchAllTradeBoard" parameterType="page" resultType="tradeBoard">
+		SELECT A.tradeId, A.goodsCategory, A.tradeImage, A.tradeTitle, 
+		A.userId, A.tradeDate, A.tradeUpdateDate, IFNULL(B.count, 0) AS tradeLike,
+		C.nickName, A.tradeStatus
+		FROM tradeBoard A
+		LEFT JOIN
+		(SELECT tradeId, COUNT(*) AS count
+		FROM tradeLike
+		GROUP BY tradeId) B
+		ON A.tradeId = B.tradeId
+		INNER JOIN
+		user C
+		ON A.userId = C.userId
+		WHERE A.tradeDeleteDate IS NULL
+		ORDER BY A.tradeDate DESC
+		LIMIT #{startPage}, #{recordSize};
+	</select>
+	
+	<select id="countTradeBoard" resultType="int">
+		SELECT count(*) FROM tradeBoard
+	</select>
+	
+	<select id="selectTradeTitle" parameterType="page" resultType="tradeBoard">
+		SELECT A.tradeId, A.goodsCategory, A.tradeImage, A.tradeTitle, 
+		A.userId, A.tradeDate, A.tradeUpdateDate, IFNULL(B.count, 0) AS tradeLike,
+		C.nickName, A.tradeStatus
+		FROM tradeBoard A
+		LEFT JOIN
+		(SELECT tradeId, COUNT(*) AS count
+		FROM tradeLike
+		GROUP BY tradeId) B
+		ON A.tradeId = B.tradeId
+		INNER JOIN
+		user C
+		ON A.userId = C.userId
+		WHERE A.tradeDeleteDate IS NULL
+		AND tradeTitle LIKE CONCAT('%',#{keyword},'%')
+		AND goodsCategory = #{category}
+		ORDER BY A.tradeDate DESC
+		LIMIT #{startPage}, #{recordSize};
+	</select>
+	
+	<select id="countTradeBoardTitle" parameterType="page" resultType="int">
+		SELECT count(*) FROM tradeBoard
+		WHERE tradeTitle LIKE CONCAT('%',#{keyword},'%')
+		AND goodsCategory = #{category}
+	</select>
+	
+	<insert id="insertTradeBoard" parameterType="insertTradeBoard">
+		INSERT INTO tradeBoard(tradeId, tradeTitle, tradeContents, tradeLike, tradeStatus, tradePrice, tradeImage, goodsCategory, userId) 
+		VALUES(#{tradeId}, #{tradeTitle}, #{tradeContents}, ${tradeLike}, #{tradeStatus}, ${tradePrice}, #{tradeImage}, #{goodsCategory}, #{userId})
+	</insert>
+	
+	<select id="user" parameterType="String" resultType="tradeBoardDetail">
+		SELECT nickName, point FROM user
+		WHERE userId = #{userId}; 
+	</select>
+	
+	<select id="boardDetail" parameterType="String" resultType="tradeBoardDetail">
+		SELECT A.tradeId, A.goodsCategory, A.tradeImage, A.tradeTitle, 
+		A.tradeContents, A.tradePrice, A.tradeStatus, A.tradeDate, IFNULL(B.count, 0) AS tradeLike
+		FROM tradeBoard A
+		LEFT JOIN
+		(SELECT tradeId, COUNT(*) AS count
+		FROM tradeLike
+		GROUP BY tradeId) B
+		ON A.tradeId = B.tradeId
+		WHERE A.tradeId = #{tradeId}
+	</select>
+	
+	<select id="contents" parameterType="String" resultType="updateContent">
+		SELECT tradeId, tradeImage, tradePrice, 
+		tradeTitle, tradeContents 
+		FROM tradeBoard
+		WHERE tradeId = #{tradeId}
+	</select>
+	
+	<update id="excludeUpdate" parameterType="insertTradeBoard">
+		UPDATE tradeBoard
+		SET
+		tradeTitle = #{tradeTitle},
+		tradeContents = #{tradeContents},
+		tradePrice = #{tradePrice},
+		goodsCategory = #{goodsCategory},
+		tradeUpdateDate = #{tradeUpdateDate}
+		WHERE tradeId = #{tradeId}
+	</update>
+	
+	<update id="includeUpdate" parameterType="insertTradeBoard">
+		UPDATE tradeBoard
+		SET 
+		tradeImage = #{tradeImage},
+		tradeTitle = #{tradeTitle},
+		tradeContents = #{tradeContents},
+		tradePrice = #{tradePrice},
+		goodsCategory = #{goodsCategory},
+		tradeUpdateDate = #{tradeUpdateDate}
+		WHERE tradeId = #{tradeId}
+	</update>
+	
+	<update id="updateDeleteDate" parameterType="HashMap">
+		UPDATE tradeBoard
+		SET tradeDeleteDate = #{sysDate}
+		WHERE tradeId = #{tradeId}
+	</update>
+	
+	<!-- 좋아요 -->
+	<select id="clickLikeUser" parameterType="tradeBoardLike" resultType="String">
+		SELECT userId FROM tradeLike
+		WHERE userId = #{userId} AND tradeId = #{tradeId} 
+		LIMIT 1
+	</select>
+	
+	<insert id="insertLike" parameterType="tradeBoardLike">
+		INSERT INTO tradeLike(tradeId, userId) VALUES(#{tradeId},#{userId})
+	</insert>
+	
+	<delete id="deleteLike" parameterType="tradeBoardLike">
+		DELETE FROM tradeLike
+		WHERE userId = #{userId} AND tradeId = #{tradeId}
+	</delete>
+	
+	<!-- 예약 -->
+	<update id="updateStatus" parameterType="HashMap">
+		UPDATE tradeBoard
+		SET tradeStatus = #{tradeStatus}
+		WHERE tradeId = #{tradeId}
+	</update>
+	
+	<!-- 예약 메세지 보내기 위해 좋아요 누른 사람들 조회 -->
+	<select id="selectClickLikePeople" parameterType="String" resultType="String">
+		SELECT userId FROM tradeLike
+		WHERE tradeId = #{tradeId}
+	</select>
+	
+	<!-- 랜딩페이지 이미지 검색 -->
+	<select id="selectRendingImg" resultType="rendingInfo">
+		SELECT tradeId, tradeImage, tradeTitle, 
+		tradeContents, userId
+		FROM tradeBoard
+		ORDER BY tradeDate DESC
+		LIMIT 0, 6;
+	</select>
+	
+	<!-- 보내는 이 닉네임 검색 -->
+	<select id="selectSenderNickName" parameterType="String" resultType="String">
+		SELECT nickName FROM user
+		WHERE userId = #{userId}
+	</select>
+	
+	<!-- 안 읽은 메세지 -->
+	<select id="selectReceivedMessage" parameterType="String" resultType="String">
+		SELECT messageReceiver FROM message
+		WHERE messageReceiver = #{userId}
+		LIMIT 0, 1;
+	</select>
+	
+	<select id="selectFalseCount" parameterType="String" resultType="int">
+		SELECT COUNT(*) FROM message
+		WHERE messageReceiver = #{userId} 
+		AND messageOpenStatus = false;
+	</select>
+	
+</mapper>
